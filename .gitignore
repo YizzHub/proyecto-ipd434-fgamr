@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+venv/
+.vscode/
+.idea/
+# corridas de prueba (modo rapido)
+results/_rapido/
+# compilacion LaTeX
+report_ieee/*.aux
+report_ieee/*.log
+report_ieee/*.out
+report_ieee/*.bbl
+report_ieee/*.blg
+report_ieee/*.synctex.gz
+report_ieee/*.fdb_latexmk
+report_ieee/*.fls
+presentation/*.aux
+presentation/*.log
+presentation/*.nav
+presentation/*.snm
+presentation/*.toc
+.DS_Store
+Thumbs.db
+# validaciones temporales del notebook
+_nb_rapido*.ipynb
