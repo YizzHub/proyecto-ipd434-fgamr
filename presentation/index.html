@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="F-GAMR: contexto SDN, búsqueda evolutiva y lógica difusa; presentación de resultados del proyecto IPD434.">
+  <title>F-GAMR · Rutas con criterio</title>
+  <link rel="stylesheet" href="estilos.css">
+  <script src="presentacion.js" defer></script>
+</head>
+<body>
+  <header class="toolbar">
+    <a class="brand" href="#1" aria-label="Ir al inicio">F<span>·</span>GAMR</a>
+    <label class="sr-only" for="slide-select">Ir a diapositiva</label>
+    <select id="slide-select"></select>
+    <div class="toolbar-actions">
+      <button id="motion" aria-pressed="false" title="Pausar animaciones">Animación</button>
+      <button id="notes" aria-expanded="false" aria-controls="notes-panel">Guion · G</button>
+      <button id="fullscreen" title="Pantalla completa">Pantalla</button>
+      <button id="print">PDF</button>
+      <button id="timer-toggle" aria-pressed="false" title="Iniciar o pausar cronómetro"><span id="timer">00:00</span> / 15:00</button>
+      <button id="timer-reset" aria-label="Reiniciar cronómetro" title="Reiniciar cronómetro">↺</button>
+    </div>
+  </header>
+
+  <main id="deck" aria-label="Presentación F-GAMR">
+    <section class="slide cover active" id="1" data-title="Rutas con criterio" data-seconds="35" aria-labelledby="t1">
+      <div class="eyebrow">IPD434 · Seminario de Soft Computing · Proyecto final</div>
+      <div class="two-col">
+        <div>
+          <h1 id="t1">No basta con<br>la ruta <span>más corta.</span></h1>
+          <p class="lead">F-GAMR: evolución + lógica difusa<br>para decidir rutas en redes SDN.</p>
+          <div class="tag-row"><span>Explorar mejor</span><span>Elegir con criterio</span></div>
+          <p class="author">Jesus Alonso Chaffe Gonzalez<br><span>Rol 202023501-5 · UTFSM · 2026</span></p>
+        </div>
+        <div class="hero-network">
+          <svg viewBox="0 0 600 410" role="img" aria-label="Dos rutas entre origen y destino: una corta y congestionada y otra alternativa">
+            <path class="network-base" d="M60 210L205 90L390 90L540 210M60 210L205 310L390 310L540 210M205 90L390 310M205 310L390 90"/>
+            <path class="route congested" d="M60 210L205 90L390 90L540 210"/>
+            <path class="route flowing" d="M60 210L205 310L390 310L540 210"/>
+            <g class="nodes"><circle cx="60" cy="210" r="25"/><circle cx="205" cy="90" r="23"/><circle cx="390" cy="90" r="23"/><circle cx="205" cy="310" r="23"/><circle cx="390" cy="310" r="23"/><circle cx="540" cy="210" r="25"/></g>
+            <text x="60" y="258" text-anchor="middle">Origen</text><text x="535" y="258" text-anchor="middle">Destino</text>
+            <text x="300" y="48" text-anchor="middle">Todos eligen el mismo enlace</text><text x="300" y="372" text-anchor="middle" class="blue-text">Considerar la calidad de servicio</text>
+          </svg>
+          <div class="caption">Esquema conceptual · no corresponde a una ejecución</div>
+        </div>
+      </div>
+      <footer>Extensión de Tran et al., GAMR (2025) · DOI: 10.1109/TETCI.2025.3543836</footer>
+      <div class="speaker-notes">
+        <p>Una ruta corta puede ser mala si muchas conexiones usan el mismo enlace. Mi proyecto extiende GAMR para incorporar conocimiento sobre la calidad de servicio en dos decisiones: cómo explorar rutas y cuál de las alternativas instalar. La propuesta se llama F-GAMR y combina dos técnicas del curso: algoritmos evolutivos y lógica difusa. Primero explicaré la red y las métricas; después el método, los resultados y sus límites.</p>
+      </div>
+    </section>
+
+    <section class="slide" id="2" data-title="¿Qué es una red SDN?" data-seconds="60" aria-labelledby="t2">
+      <div class="eyebrow">01 · Contexto</div><h2 id="t2">Separar <span>decidir</span> de <span>reenviar.</span></h2>
+      <div class="two-col">
+        <div class="plane-stack">
+          <div class="plane application"><small>PLANO DE APLICACIÓN</small><strong>GAMR / F-GAMR</strong><span>Calcula el conjunto de rutas</span></div>
+          <div class="plane-arrow">↓ política de rutas</div>
+          <div class="plane control"><small>PLANO DE CONTROL</small><strong>Controlador SDN</strong><span>Obtiene mediciones · programa reglas</span></div>
+          <div class="plane-arrow">↑ mediciones &nbsp; ↓ reglas · OpenFlow</div>
+          <div class="plane data"><small>PLANO DE DATOS</small><strong>Switches y enlaces</strong><span>Transportan los paquetes</span></div>
+        </div>
+        <div>
+          <svg class="sdn-network" viewBox="0 0 560 340" role="img" aria-label="Controlador que recibe mediciones y envía reglas a switches; paquetes que circulan entre host y servidor">
+            <g class="control-links"><path d="M280 65L145 210M280 65L280 260M280 65L420 210"/></g>
+            <rect class="controller" x="190" y="20" width="180" height="70" rx="18"/><text x="280" y="62" text-anchor="middle">Controlador</text>
+            <path class="network-base" d="M35 210H145L280 260L420 210H525M145 210H420"/>
+            <path class="route flowing" d="M35 210H145L280 260L420 210H525"/>
+            <g class="nodes"><circle cx="145" cy="210" r="25"/><circle cx="280" cy="260" r="25"/><circle cx="420" cy="210" r="25"/></g>
+            <text x="35" y="178" text-anchor="middle">Host</text><text x="515" y="178" text-anchor="middle">Servidor</text><text x="280" y="318" text-anchor="middle">Los switches reenvían; el controlador coordina</text>
+          </svg>
+          <div class="callout">La visión global permite considerar<br><strong>muchas solicitudes a la vez.</strong></div>
+          <p class="caption">Aquí se simulan estados y rutas. No se ejecuta un controlador real.</p>
+        </div>
+      </div>
+      <footer>Fundamento: Kreutz et al. (2015); OpenFlow: McKeown et al. (2008).</footer>
+      <div class="speaker-notes"><p>SDN significa redes definidas por software. Su idea es separar quién decide las rutas de quién reenvía paquetes. Los switches forman el plano de datos. El controlador recoge información y configura esos switches. Por encima, una aplicación decide políticas: ahí se ubicaría F-GAMR. OpenFlow es una forma de comunicar control y datos, pero mi implementación no lo ejecuta: simula la red en Python. La ventaja de una visión global es considerar cómo interfieren las solicitudes simultáneas. El desafío es que las mediciones pueden cambiar mientras se calcula e instala la solución.</p></div>
+    </section>
+
+    <section class="slide" id="3" data-title="Qué significa calidad de servicio" data-seconds="65" aria-labelledby="t3">
+      <div class="eyebrow">02 · Métricas de la red</div><h2 id="t3">Tres preguntas sobre <span>cada ruta.</span></h2>
+      <div class="metric-grid">
+        <article class="card"><div class="metric-icon">ms ↓</div><h3>Retardo</h3><p>¿Cuánto tarda un paquete?</p><div class="formula">D = suma de retardos</div><div class="example">20 + 30 = <strong>50 ms</strong></div></article>
+        <article class="card"><div class="metric-icon">% ↓</div><h3>Pérdida</h3><p>¿Qué fracción no llega?</p><div class="formula">L = 1 − ∏(1 − pérdida del enlace)</div><div class="example">10% y 10% → <strong>19%</strong></div></article>
+        <article class="card"><div class="metric-icon">Mbps</div><h3>Capacidad disponible</h3><p>¿Cuánto puede transportar?</p><div class="formula">B = mínimo residual de la ruta</div><div class="example">80 y 30 → <strong>30 Mbps</strong></div></article>
+      </div>
+      <div class="load-demo">
+        <div><label for="load">Carga sobre un enlace de 100 Mbps</label><input id="load" type="range" min="20" max="130" value="80" step="1"><output id="load-value" for="load">80 Mbps</output></div>
+        <div class="load-meter"><div id="load-fill"></div></div>
+        <div><strong id="utilization">Utilización ρ = 80%</strong><p id="load-message">Menos margen libre; la cola crece al acercarse al 100%.</p></div>
+      </div>
+      <div class="takeaway">Objetivos: retardo medio ↓ · pérdida media ↓ · utilización del cuello de botella ↓
+        <p class="caption">Tercer objetivo: promedio del máximo ρ de cada ruta, acotado a 100%. Capacidad disponible: restricción.</p>
+      </div>
+      <footer>Ejemplos didácticos · ρ = carga / capacidad · En el modelo, la sobrecarga agrega pérdida.</footer>
+      <div class="speaker-notes"><p>QoS significa calidad de servicio. Retardo es tiempo, medido en milisegundos, y se suma por enlace. Pérdida es la fracción que no llega: se combinan las probabilidades de supervivencia; dos enlaces con diez por ciento producen diecinueve, no veinte. La capacidad disponible depende del cuello de botella, usando capacidad residual después de la carga de fondo. Muevo la carga: ochenta megabits sobre cien representan ochenta por ciento de utilización. Cerca de cien hay más espera; superar la capacidad provoca desborde en el simulador. GAMR minimiza retardo, pérdida y utilización del cuello de botella, sujeto a una restricción de capacidad. Esa restricción individual no garantiza que todas las solicitudes juntas quepan.</p></div>
+    </section>
+
+    <section class="slide" id="4" data-title="Pareto, hipervolumen e IGD" data-seconds="75" aria-labelledby="t4">
+      <div class="eyebrow">03 · Métricas de la búsqueda</div><h2 id="t4">No hay una única ruta <span>“mejor”.</span></h2>
+      <div class="two-col">
+        <div>
+          <div class="segmented" role="group" aria-label="Explicación del frente">
+            <button data-pareto="pareto" aria-pressed="true">Pareto</button><button data-pareto="hv" aria-pressed="false">HV ↑</button><button data-pareto="igd" aria-pressed="false">IGD ↓</button>
+          </div>
+          <svg id="pareto-chart" viewBox="0 0 600 390" role="img" aria-label="Ejemplo bidimensional: soluciones no dominadas, área de hipervolumen y distancias IGD">
+            <path class="axes" d="M65 30V325H560"/><text x="330" y="375" text-anchor="middle">Retardo normalizado → peor</text><text transform="translate(23 180) rotate(-90)" text-anchor="middle">Pérdida normalizada → peor</text>
+            <g id="hv-area" hidden><path d="M140 95H530V305H140ZM245 160H530V305H245ZM375 255H530V305H375" class="hv-area"/><rect x="525" y="300" width="10" height="10" class="reference"/><text x="525" y="288" text-anchor="end">Referencia desfavorable r</text></g>
+            <g id="igd-lines" hidden><g class="igd-lines"><path d="M120 75L140 95M215 150L245 160M345 230L375 255M400 280L375 255"/></g><g class="reference-points"><circle cx="120" cy="75" r="6"/><circle cx="215" cy="150" r="6"/><circle cx="345" cy="230" r="6"/><circle cx="400" cy="280" r="6"/></g></g>
+            <path class="pareto-line" d="M140 95L245 160L375 255"/>
+            <g class="pareto-points"><circle cx="140" cy="95" r="10"/><circle cx="245" cy="160" r="10"/><circle cx="375" cy="255" r="10"/></g>
+            <circle cx="400" cy="125" r="8" class="dominated"/><text x="411" y="114">Dominada</text><text x="145" y="76">Rápida</text><text x="260" y="155">Compromiso</text><text x="367" y="285" text-anchor="end">Menos pérdida</text>
+          </svg>
+          <p class="caption">Esquema 2D; la evaluación real usa <strong>3 objetivos</strong>.</p>
+        </div>
+        <div class="metric-explanation">
+          <div id="pareto-explanation" class="callout"><strong>Pareto = alternativas no dominadas.</strong><p>Nadie mejora todos sus objetivos a la vez. Después hay que elegir una configuración.</p></div>
+          <div class="mini-metrics"><div><strong>HV ↑</strong><span>Volumen cubierto hasta una referencia desfavorable.</span></div><div><strong>IGD ↓</strong><span>Distancia media desde una referencia a lo encontrado.</span></div></div>
+          <div class="takeaway">Un frente mejor ≠ una ruta instalada mejor.</div>
+        </div>
+      </div>
+      <footer>HV: Zitzler y Thiele (1999) · IGD: Coello Coello y Reyes Sierra (2004) · Referencia experimental empírica, no óptimo conocido.</footer>
+      <div class="speaker-notes"><p>Una solución domina a otra cuando no es peor en ningún objetivo y es mejor en al menos uno. Las alternativas que nadie domina forman Pareto. El gráfico simplifica a retardo y pérdida; el experimento usa tres objetivos. Pulso HV: el área sombreada, volumen en tres dimensiones, resume cobertura hasta una referencia desfavorable. Mayor es mejor. Pulso IGD: las líneas son distancias desde puntos de referencia a la solución encontrada más cercana; se promedian y menor es mejor. Nuestra referencia es la unión no dominada de los resultados, no un óptimo verdadero. Se usan escalas comunes por instancia. Estas métricas juzgan un conjunto de opciones; QoS juzga la configuración instalada. IGD no participa en la parada de GAMR.</p></div>
+    </section>
+
+    <section class="slide" id="5" data-title="Qué hace GAMR y cuándo se detiene" data-seconds="65" aria-labelledby="t5">
+      <div class="eyebrow">04 · Algoritmo base</div><h2 id="t5">Evolucionar rutas. <span>Reutilizar experiencia.</span></h2>
+      <div class="flow algorithm-flow">
+        <div class="flow-node"><small>1 · INICIAR</small><strong>Memoria + azar</strong><span>100 configuraciones<br>α = 0.5</span></div><b class="flow-arrow">→</b>
+        <div class="flow-node"><small>2 · EVOLUCIONAR</small><strong>Cruce + mutación</strong><span>Combinar y modificar rutas</span></div><b class="flow-arrow">→</b>
+        <div class="flow-node"><small>3 · CONSERVAR</small><strong>NSGA-II</strong><span>Calidad + diversidad</span></div><b class="flow-arrow">→</b>
+        <div class="flow-node"><small>4 · INSTALAR</small><strong>Elegir del frente</strong><span>Menor solapamiento</span></div>
+      </div>
+      <div class="two-col compact">
+        <div class="callout"><strong>Un individuo = todas las rutas de un intervalo.</strong><p>La memoria guarda rutas útiles para el siguiente.</p><p class="formula">α: probabilidad de reutilización · no es β</p></div>
+        <div class="stop-box">
+          <svg viewBox="0 0 520 150" role="img" aria-label="Curva conceptual de hipervolumen que aumenta y luego se estabiliza"><path class="axes" d="M35 15V125H495"/><path class="convergence" d="M40 115L85 85L130 65L190 40L250 27L310 24L380 24L460 24"/><path class="plateau" d="M310 18V55M460 18V55M310 50H460"/><text x="385" y="83" text-anchor="middle">Ventana de 10 generaciones</text><text x="52" y="28">HV</text></svg>
+          <strong>Parada: |HV(G) − HV(G−10)| &lt; 10⁻⁴</strong>
+          <p>O máximo 500 generaciones. Termina el cálculo,<br><strong>no el tráfico</strong>; luego se vuelve a optimizar.</p>
+        </div>
+      </div>
+      <footer>Esquema de convergencia didáctico · No certifica óptimo global · Base: Tran et al. (2025), NSGA-II: Deb et al. (2002).</footer>
+      <div class="speaker-notes"><p>AG significa algoritmo genético. Cada individuo contiene una ruta por solicitud: se evalúan juntas. GAMR combina rutas memorizadas y caminatas aleatorias; alfa vale cero coma cinco y controla la reutilización. Después cruza y muta, y NSGA-II conserva opciones de calidad y diversas. La búsqueda termina si el hipervolumen cambia menos de diez a la menos cuatro respecto de diez generaciones antes, o al llegar a quinientas. Detener GAMR significa terminar el cálculo del intervalo: se instala una configuración y el tráfico continúa. En el intervalo siguiente se optimiza nuevamente. No significa haber probado un óptimo global, y el IGD no es criterio de parada. El punto débil que abordo está en explorar sin guía QoS y elegir finalmente por solapamiento.</p></div>
+    </section>
+
+    <section class="slide" id="6" data-title="Contribución y vínculo con el curso" data-seconds="40" aria-labelledby="t6">
+      <div class="eyebrow">05 · Contribución propia</div><h2 id="t6">Dos decisiones nuevas. <span>El resto se conserva.</span></h2>
+      <div class="contribution-grid">
+        <article class="card emphasis"><small>P1 · EXPLORACIÓN</small><h3>FIS-1</h3><p>De vecinos uniformes<br>a saltos guiados por QoS.</p><div class="pill">10 reglas Mamdani</div></article>
+        <div class="evolution-core"><strong>GAMR</strong><span>Memoria · cruce<br>NSGA-II · parada HV</span><div class="connector">→ frente de Pareto →</div></div>
+        <article class="card emphasis"><small>P2 · ELECCIÓN FINAL</small><h3>FIS-2</h3><p>De menor solapamiento<br>a compromiso retardo–pérdida.</p><div class="pill">6 reglas Mamdani</div></article>
+      </div>
+      <div class="course-band"><span>Búsqueda evolutiva</span><b>+</b><span>Conocimiento difuso</span><b>=</b><strong>Hibridación de Soft Computing</strong></div>
+      <div class="takeaway">Reglas interpretables · sin entrenamiento · aportes separados con ablación.</div>
+      <footer>FIS = sistema de inferencia difusa · Referencias: Zadeh (1965), Mamdani y Assilian (1975), Herrera y Lozano (2003).</footer>
+      <div class="speaker-notes"><p>La contribución no es reemplazar GAMR ni afirmar que inventé la hibridación genético-difusa. Es incorporar dos sistemas concretos en sus decisiones. FIS-1 guía la construcción y la mutación; pregunta P1: mejora el frente y reduce el costo. FIS-2 escoge del frente; pregunta P2: reduce pérdida realizada con un compromiso aceptable. Memoria, cruce, selección y parada quedan iguales. La relación con el curso es directa: búsqueda evolutiva más inferencia difusa interpretable, sin entrenamiento. Separar los componentes permite verificar quién aporta qué.</p></div>
+    </section>
+
+    <section class="slide" id="7" data-title="FIS-1: guiar sin prohibir" data-seconds="65" aria-labelledby="t7">
+      <div class="eyebrow">06 · Método: explorar</div><h2 id="t7">Preferir un buen salto. <span>No eliminar el azar.</span></h2>
+      <div class="two-col">
+        <div>
+          <div class="input-chips"><span>Progreso al servidor</span><span>Retardo</span><span>Pérdida</span><span>Carga de fondo</span></div>
+          <div class="rule-card"><small>REGLA EJEMPLO</small><p>SI acerca al servidor<br>Y retardo bajo Y pérdida baja<br>ENTONCES deseabilidad muy alta.</p></div>
+          <div class="inference-strip"><span>Grados 0…1</span><b>→</b><span>Reglas</span><b>→</b><span>Centroide</span><b>→</b><strong>w</strong></div>
+          <p class="caption">Pertenencia difusa ≠ probabilidad · las probabilidades vienen después.</p>
+        </div>
+        <div class="roulette">
+          <h3>Ejemplo de ruleta</h3><div id="roulette-bars"></div>
+          <div class="formula">P(v) ∝ w(v)<sup>κ</sup> + 0.01</div>
+          <label for="kappa">Sesgo κ <output id="kappa-value" for="kappa">2</output></label><input type="range" min="1" max="4" step="1" value="2" id="kappa">
+          <p class="caption">w = 0.8, 0.5 y 0.2 son ejemplos ilustrativos, no salidas de una ejecución. En el experimento: κ=2.</p>
+        </div>
+      </div>
+      <div class="takeaway">κ concentra la preferencia · ε=0.01 mantiene toda opción válida posible.</div>
+      <footer>También guía la mutación por deseabilidad de los dos enlaces insertados, con progreso neutro.</footer>
+      <div class="speaker-notes"><p>FIS-1 recibe cuatro medidas: acercamiento al servidor, retardo y pérdida del enlace, y carga de fondo. Las convierte en grados de etiquetas como bajo o alto, activa diez reglas y calcula una puntuación mediante centroide. Esa puntuación no es una probabilidad. Después la transformamos en una ruleta: puntuación elevada a kappa más epsilon, y normalizamos. Muevo kappa para ver cómo aumenta la concentración. Las puntuaciones aquí son didácticas; el experimento usa kappa dos, calibrado con semillas distintas de las evaluadas. Epsilon cero coma cero uno evita prohibir vecinos válidos. En mutación se consideran ambos enlaces de la inserción. No se cambia el algoritmo a una ruta única determinista.</p></div>
+    </section>
+
+    <section class="slide" id="8" data-title="FIS-2: escoger un compromiso" data-seconds="60" aria-labelledby="t8">
+      <div class="eyebrow">07 · Método: elegir</div><h2 id="t8">Un buen frente necesita <span>un buen selector.</span></h2>
+      <div class="two-col">
+        <div class="selector-pipeline">
+          <div class="plane"><small>FRENTE FINAL</small><strong>Configuraciones no dominadas</strong><span>Cada opción contiene todas las rutas</span></div>
+          <div class="plane-arrow">↓ retardo y pérdida medios</div>
+          <div class="plane emphasis"><small>NORMALIZACIÓN DENTRO DEL FRENTE</small><strong>Menor valor → 0 · mayor → 1</strong><span>Comparar alternativas en la misma escala</span></div>
+          <div class="plane-arrow">↓ seis reglas + centroide</div>
+          <div class="plane"><small>INSTALACIÓN</small><strong>Mayor puntuación FIS-2</strong><span>Empate: menor retardo</span></div>
+        </div>
+        <div>
+          <img class="surface" src="../results/figures/notebook/fis2_superficie.png" alt="Superficie de aptitud FIS-2 en función de retardo y pérdida normalizados, con preferencia por valores bajos de ambos">
+          <div class="callout"><strong>Ambos bajos → aptitud muy alta.</strong><p>Menos pérdida puede costar algo de retardo.</p></div>
+          <p class="caption">Puntuación relativa al frente; no garantiza QoS cuando la red cambia.</p>
+        </div>
+      </div>
+      <footer>FIS-2 no genera un nuevo frente; selecciona una configuración del existente.</footer>
+      <div class="speaker-notes"><p>FIS-2 actúa después de la evolución. Toma retardo y pérdida medios de cada configuración y los normaliza entre mínimo y máximo dentro de ese frente. Seis reglas favorecen ambos bajos, admiten compromisos y penalizan valores altos. Se elige la mayor puntuación, con empate por menor retardo. La superficie muestra esa política interpretable. No significa que FIS-2 optimice simultáneamente todos los objetivos: prioriza retardo y pérdida y puede aumentar utilización. Tampoco genera nuevas rutas ni garantiza resultados en el estado siguiente. Su puntuación depende de las alternativas disponibles. Para aislarlo, también probamos distintos selectores sobre exactamente los mismos frentes de GAMR.</p></div>
+    </section>
+
+    <section class="slide" id="9" data-title="Cómo se evaluó" data-seconds="65" aria-labelledby="t9">
+      <div class="eyebrow">08 · Diseño experimental</div><h2 id="t9">Mismas instancias. <span>Comparación pareada.</span></h2>
+      <div class="experiment-grid">
+        <article class="card"><small>E1 · PRINCIPAL + ABLACIÓN</small><h3>30 semillas</h3><p>Oxford / Chinanet<br>50 solicitudes · β=5%, 55%</p></article>
+        <article class="card"><small>E2 · ESCALABILIDAD</small><h3>10 semillas</h3><p>Oxford · β=20%<br>10, 20, 50, 100 solicitudes</p></article>
+        <article class="card"><small>E3 · DESORDEN</small><h3>10 semillas</h3><p>Chinanet · 100 solicitudes<br>β=0%, 5%, 20%, 55%</p></article>
+      </div>
+      <div class="timeline"><span>Medir Δᵗ</span><b>→</b><span>Optimizar</span><b>→</b><span>Instalar</span><b>→</b><span class="highlight">Evaluar en Δᵗ⁺¹</span></div>
+      <div class="protocol-bottom">
+        <div><strong>Una observación por semilla</strong><p>4 intervalos; descartar el primero; promediar 2–4.<br>Media ± desviación estándar · Wilcoxon pareado.</p></div>
+        <div><strong>Referencias de comparación</strong><p>Min-Hop · QoS-Dijkstra · NSGA-II · GAMR.<br>E3: LCP-WAC* es un proxy histórico, sin LSTM.</p></div>
+      </div>
+      <footer>Topologías: Oxford 20 nodos/26 enlaces; Chinanet 42/66 · Dos servidores · Calibración: semillas 500–503 · Simulador fluido.</footer>
+      <div class="speaker-notes"><p>Evaluamos tres preguntas experimentales. E1 compara el método y sus componentes en Oxford y Chinanet, con treinta semillas y cincuenta solicitudes. E2 aumenta solicitudes en Oxford; E3 aumenta desorden de capacidad en Chinanet, ambos con diez semillas. Beta no es un parámetro del algoritmo: controla perturbaciones de capacidad. Beta cero además fija capacidades iguales; la carga de fondo sigue cambiando. Todos reciben las mismas solicitudes y estados. La QoS se mide después de que la red evoluciona, no solamente donde se optimizó. Cada semilla aporta una observación promedio de los intervalos dos a cuatro. Reportamos media y desviación estándar y Wilcoxon pareado, sin ajuste múltiple. La calibración usa otras semillas. LCP-WAC estrella no reproduce la LSTM original.</p></div>
+    </section>
+
+    <section class="slide" id="10" data-title="E1: calidad del frente y tiempo" data-seconds="65" aria-labelledby="t10">
+      <div class="eyebrow">09 · Resultados: P1</div><h2 id="t10">Mejor frente en Chinanet. <span>Menos tiempo en ambas.</span></h2>
+      <div class="two-col chart-columns">
+        <figure><figcaption>Hipervolumen ↑ · media ± desviación estándar</figcaption><svg id="hv-results" viewBox="0 0 570 355" role="img" aria-label="Hipervolumen GAMR y F-GAMR en los cuatro escenarios de E1"></svg></figure>
+        <figure><figcaption>Tiempo por configuración ↓ · segundos</figcaption><svg id="time-results" viewBox="0 0 570 355" role="img" aria-label="Tiempo GAMR y F-GAMR con desviación estándar"></svg></figure>
+      </div>
+      <div class="result-strip"><div><strong>HV +6.8…8.2%</strong><span>Chinanet · p&lt;10⁻⁶</span></div><div><strong>IGD −19.6…24.7%</strong><span>Chinanet · p&lt;0.001</span></div><div><strong>Tiempo −7.3…18.3%</strong><span>Ambas · p&lt;0.03</span></div></div>
+      <footer>30 semillas · Diferencias relativas vs GAMR · Oxford: HV/IGD sin mejora significativa · Fuente: E1_moo_media_std.csv y Wilcoxon.</footer>
+      <div class="speaker-notes"><p>En Chinanet, F-GAMR mejora hipervolumen entre seis coma ocho y ocho coma dos por ciento y reduce IGD entre diecinueve coma seis y veinticuatro coma siete, con significancia en las pruebas pareadas. En Oxford no hay mejora significativa del frente; el IGD incluso empeora en promedio. En ambas redes baja el tiempo entre siete coma tres y dieciocho coma tres por ciento. Los segmentos muestran desviación estándar entre semillas, no intervalos de confianza. Estos tiempos son por configuración completa: la mejora es relativa, no una prueba de operación en tiempo real. Frente a la referencia NSGA-II también mejora HV, IGD y tiempo, pero la pregunta central es qué añade a GAMR.</p></div>
+    </section>
+
+    <section class="slide" id="11" data-title="E1: pérdida y costo del compromiso" data-seconds="65" aria-labelledby="t11">
+      <div class="eyebrow">10 · Resultados: P2</div><h2 id="t11">Menos paquetes perdidos. <span>Un compromiso explícito.</span></h2>
+      <div class="two-col">
+        <figure><figcaption>Pérdida realizada ↓ · % · media ± desviación estándar</figcaption><svg id="loss-results" viewBox="0 0 570 355" role="img" aria-label="Pérdida realizada GAMR y F-GAMR en E1"></svg></figure>
+        <div>
+          <div class="big-result">−2.8…6.1%<span>pérdida relativa vs GAMR · p≤10⁻⁴</span></div>
+          <div class="comparison-example"><span>Chinanet · β=5%</span><strong>10.77% <b>→</b> 10.11%</strong><p>−0.66 puntos porcentuales<br>= −6.1% respecto de 10.77%</p></div>
+          <div class="callout">Retardo: <strong>+0.3…1.6%</strong><br><span>Solo Oxford β=5% es significativo (p=0.025).</span></div>
+        </div>
+      </div>
+      <div class="takeaway">Menos pérdida no significa ganar todas las métricas.</div>
+      <footer>30 semillas · Estado realizado Δᵗ⁺¹ · Fuente: E1_qos_media_std.csv y pruebas de Wilcoxon.</footer>
+      <div class="speaker-notes"><p>En E1, F-GAMR reduce la pérdida respecto de GAMR en los cuatro escenarios, entre dos coma ocho y seis coma uno por ciento relativo. El ejemplo aclara las unidades: pasar de diez coma setenta y siete a diez coma once por ciento resta cero coma sesenta y seis puntos porcentuales; al dividir por la pérdida inicial resulta seis coma uno por ciento de reducción. No son seis puntos. El costo es un aumento pequeño de retardo, entre cero coma tres y uno coma seis por ciento; solo Oxford con beta cinco resulta significativo. Además puede subir la utilización máxima. La conclusión es un compromiso de QoS, no una superioridad universal.</p></div>
+    </section>
+
+    <section class="slide" id="12" data-title="Ablación: qué aporta cada sistema" data-seconds="55" aria-labelledby="t12">
+      <div class="eyebrow">11 · Evidencia causal del diseño</div><h2 id="t12">Explorar y elegir <span>aportan cosas distintas.</span></h2>
+      <table class="ablation-table">
+        <caption>Chinanet · β=5% · media ± desviación estándar · 30 semillas</caption>
+        <thead><tr><th scope="col">Método</th><th scope="col">HV ↑</th><th scope="col">Tiempo [s] ↓</th><th scope="col">Pérdida [%] ↓</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">GAMR</th><td>0.679 ± 0.060</td><td>7.44 ± 1.69</td><td>10.77 ± 3.92</td></tr>
+          <tr><th scope="row">Solo FIS-1</th><td class="best">0.729 ± 0.049</td><td class="best">6.56 ± 1.78</td><td>10.82 ± 3.92</td></tr>
+          <tr><th scope="row">Solo FIS-2</th><td>0.691 ± 0.046</td><td>7.83 ± 1.74</td><td class="best">10.14 ± 4.02</td></tr>
+          <tr class="full-method"><th scope="row">F-GAMR</th><td class="best">0.734 ± 0.055</td><td class="best">6.87 ± 1.67</td><td class="best">10.11 ± 4.01</td></tr>
+        </tbody>
+      </table>
+      <div class="two-col compact">
+        <div class="callout"><strong>FIS-1 → frente y tiempo</strong><p>Guía la búsqueda; no reduce pérdida por sí solo en este escenario.</p></div>
+        <div class="callout"><strong>FIS-2 → pérdida instalada</strong><p>No mejora directamente el frente; elige otra configuración.</p></div>
+      </div>
+      <footer>Azul: mejora significativa vs GAMR en esta tabla (p&lt;0.05) · El selector también se aisló sobre los mismos frentes.</footer>
+      <div class="speaker-notes"><p>La ablación consiste en retirar un componente y observar qué cambia. En este escenario, solo FIS-1 aumenta HV y reduce tiempo significativamente, pero no pérdida. Solo FIS-2 reduce pérdida, pero sus cambios de frente y tiempo no son significativos. La combinación reúne ambos beneficios. FIS-2 actúa después de la búsqueda, aunque a través de la ruta memorizada puede influir en intervalos posteriores. Por eso también comparamos selectores sobre exactamente los mismos frentes. FIS-2 reduce pérdida a cambio de algo de retardo frente al selector original. Esta separación explica el resultado mejor que decir simplemente que todo mejora.</p></div>
+    </section>
+
+    <section class="slide" id="13" data-title="E2 y E3: carga y desorden" data-seconds="75" aria-labelledby="t13">
+      <div class="eyebrow">12 · Robustez y escalabilidad</div><h2 id="t13">La ventaja tiene <span>condiciones.</span></h2>
+      <div class="two-col chart-columns">
+        <figure><figcaption>E2 · Oxford · pérdida [%] ↓ vs solicitudes Nᵣ</figcaption><svg id="scale-results" viewBox="0 0 570 330" role="img" aria-label="Pérdida frente a solicitudes de Min-Hop, QoS-Dijkstra, GAMR y F-GAMR"></svg><p class="chart-conclusion">Con 100 solicitudes: F-GAMR 14.47%;<br>ventaja vs GAMR <strong>no significativa</strong> (p=0.16).</p></figure>
+        <figure><figcaption>E3 · Chinanet · pérdida [%] ↓ vs β</figcaption><svg id="beta-results" viewBox="0 0 570 330" role="img" aria-label="Pérdida frente al desorden de capacidad de GAMR, F-GAMR y LCP-WAC proxy"></svg><p class="chart-conclusion">β≤20%: −3.2…4.4% vs GAMR (p=0.002).<br>β=55%: ventaja <strong>no significativa</strong> (p=0.16).</p></figure>
+      </div>
+      <label class="variability-control"><input type="checkbox" id="show-spread"> Mostrar ± desviación estándar (10 semillas)</label>
+      <footer>β=0: capacidad fija y homogénea, pero carga de fondo variable · LCP-WAC* sin LSTM · Curvas: medias; bandas: ±DE.</footer>
+      <div class="speaker-notes"><p>En E2 la carga creciente perjudica a las heurísticas que deciden solicitudes separadas. Con cien solicitudes, Min-Hop tiene veinticuatro coma cinco por ciento de pérdida y QoS-Dijkstra veintinueve coma siete; los evolutivos alrededor de catorce coma cinco. F-GAMR reduce significativamente la pérdida frente a GAMR con diez, veinte y cincuenta solicitudes, no con cien. Aun tarda diez coma cincuenta y dos segundos para cien solicitudes. En E3, beta controla el desorden de capacidad, no cuánto tráfico existe. Beta cero fija capacidades iguales; la carga de fondo varía. El proxy histórico obtiene allí la menor media. Con desorden, F-GAMR tiene menores medias que el proxy, sin demostrar significancia frente a él. Frente a GAMR la ventaja sí es significativa hasta beta veinte, no en cincuenta y cinco. Las bandas muestran la alta variabilidad.</p></div>
+    </section>
+
+    <section class="slide" id="14" data-title="Conclusiones, límites y reproducción" data-seconds="50" aria-labelledby="t14">
+      <div class="eyebrow">13 · Conclusiones y discusión</div><h2 id="t14">Conocimiento interpretable.<br><span>No una mejora universal.</span></h2>
+      <div class="closing-grid">
+        <article><small>QUÉ APORTA</small><h3>Guía + compromiso</h3><p>Mejor frente en Chinanet.<br>Menor tiempo y pérdida en E1.</p></article>
+        <article><small>DÓNDE FALLA</small><h3>Diversidad y cambio</h3><p>Oxford: pocas alternativas.<br>Alta carga / β: ventaja reducida.</p></article>
+        <article><small>PRÓXIMO PASO</small><h3>Validar fuera del modelo</h3><p>Mininet + tráfico TCP real.<br>κ adaptativo; más topologías.</p></article>
+      </div>
+      <div class="limitations-line">Modelo fluido · proxy sin LSTM · solo dos topologías · pruebas múltiples sin ajuste · no prueba de tiempo real</div>
+      <div class="repo-card"><div><small>CÓDIGO · NOTEBOOK · DATOS · RESULTADOS</small><a href="https://github.com/YizzHub/proyecto-ipd434-fgamr" target="_blank" rel="noopener">github.com/YizzHub/proyecto-ipd434-fgamr</a><span>Comprobar que el enlace sea público antes de entregar.</span></div><code>python run_reproduction.py --solo-reporte</code></div>
+      <footer>Mensaje final: la lógica difusa complementa a la evolución, pero su utilidad depende de la red y del estado que se evalúa.</footer>
+      <div class="speaker-notes"><p>Respondo P1: la guía mejora el frente en Chinanet y reduce tiempo, pero no mejora significativamente el frente en Oxford. Respondo P2: la selección reduce pérdida en E1 con un pequeño costo de retardo; la ventaja se debilita con alta carga o cambios fuertes. La contribución es conocimiento interpretable en dos decisiones, no una mejora universal. Las limitaciones son simulación fluida, proxy sin LSTM, dos topologías y pruebas múltiples sin ajuste. El control adaptativo de alfa se probó y se descartó; no se ocultó ese resultado negativo. El siguiente paso es validar en Mininet con TCP y adaptar kappa para preservar diversidad. El repositorio contiene código, datos y resultados, y debe verificarse su acceso público. Gracias.</p></div>
+    </section>
+  </main>
+
+  <aside id="notes-panel" aria-label="Guion de la diapositiva" hidden>
+    <div class="notes-header"><strong id="notes-title">Guion</strong><button id="close-notes" aria-label="Cerrar guion">×</button></div>
+    <div id="notes-body"></div>
+    <p class="caption">Texto de apoyo, no para leer literalmente. Guion completo y preguntas: guion.md.</p>
+  </aside>
+  <nav class="bottom-nav" aria-label="Navegación">
+    <button id="prev" aria-label="Diapositiva anterior">←</button>
+    <span id="counter" aria-live="polite">01 / 14</span><span id="section-title">Rutas con criterio</span>
+    <span class="keyboard-hint">← → navegar · G guion · Inicio / Fin</span>
+    <button id="next" aria-label="Diapositiva siguiente">→</button>
+  </nav>
+  <div class="progress-track" aria-hidden="true"><div id="progress"></div></div>
+  <div id="status" class="status" role="status"></div>
+  <noscript><style>.slide{display:block}.toolbar,.bottom-nav{display:none}</style><p>Activa JavaScript para navegar y usar las demostraciones. El contenido está disponible a continuación.</p></noscript>
+</body>
+</html>

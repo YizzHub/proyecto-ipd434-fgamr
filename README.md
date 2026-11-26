@@ -47,7 +47,7 @@ tests/test_core.py         Pruebas unitarias (pytest)
 notebooks/                 Anexo: réplica de GAMR del seminario (con salidas)
 results/                   raw_logs/, tables/, figures/, calibracion/, replicacion_seminario/
 report_ieee/               Informe IEEEtran de 5 páginas (main.tex, references.bib, figs/, tablas/, main.pdf)
-presentation/              Diapositivas de la presentación final
+presentation/              HTML visual, guion cronometrado y diapositivas PDF
 ```
 
 ## Reproducción paso a paso
@@ -112,9 +112,27 @@ banda. Se reporta media ± std y Wilcoxon pareado por semilla.
 - El plano de datos es un modelo fluido (cola M/M/1 acotada más pérdida por desborde), no Mininet/Ryu, así que los
   valores absolutos no son comparables con el paper.
 - LCP-WAC* es un proxy sin LSTM.
-- Los tiempos son de Python puro.
+- Con β=0, las capacidades son fijas y homogéneas; la carga de fondo sigue cambiando. Frente a β>0 cambia también
+  la homogeneidad, no solo la perturbación temporal.
+- Los tiempos son de Python puro, por configuración completa; el ahorro relativo no demuestra operación en tiempo real.
+- Las pruebas pareadas usan semillas como observaciones y no tienen ajuste por comparaciones múltiples.
 
 Detalles en la Sección 15 del notebook.
+
+## Presentación final
+
+Abre [presentation/index.html](presentation/index.html) directamente en el navegador, sin servidor ni conexión.
+Son **14 diapositivas**, con contexto SDN, definiciones de QoS/HV/IGD, método, resultados y límites. Flechas para
+navegar, **G** para mostrar el guion, controles de animación, pantalla completa y cronómetro manual.
+
+El [guion completo](presentation/guion.md) planifica **14 minutos**, deja 1 minuto de margen e incluye preguntas de
+defensa. Los esquemas interactivos son didácticos; los gráficos experimentales usan las tablas ejecutadas y muestran
+variabilidad. Si cambian los resultados, actualiza los valores incorporados en la presentación antes de reexportar.
+
+Se incluye una [versión PDF de 14 páginas](presentation/diapositivas.pdf). El botón **PDF** imprime todas las
+diapositivas en formato 16:9, sin controles ni guion: selecciona guardar como PDF,
+todas las páginas, gráficos de fondo y sin encabezados/pies del navegador. Comprueba el acceso público al repositorio
+antes de entregar; una URL escrita no garantiza que el código esté publicado.
 
 ## Licencia
 
