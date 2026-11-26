@@ -1,0 +1,192 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% Plantilla oficial IEEE conference (versión 06/27/2024). Compilar: pdflatex main; bibtex main; pdflatex main (x2)
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish,es-noshorthands,es-tabla]{babel}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\setlist{leftmargin=*,itemsep=0pt,topsep=1pt,parsep=0pt}
+\renewcommand{\algorithmicrequire}{\textbf{Entrada:}}
+\floatname{algorithm}{Algoritmo}
+\newcommand{\Dc}{\mathcal{D}}
+\newcommand{\Lc}{\mathcal{L}}
+\newcommand{\Bc}{\mathcal{B}}
+\newcommand{\qq}{\textquestiondown}
+\graphicspath{{figs/}}
+\def\IEEEbibitemsep{0pt plus .5pt}
+
+\begin{document}
+
+\title{F-GAMR: Exploración guiada por lógica difusa y selección difusa del frente de Pareto para el enrutamiento multi-objetivo dinámico en redes SDN}
+
+\author{\IEEEauthorblockN{Jesus Alonso Chaffe Gonzalez}
+\IEEEauthorblockA{\textit{Rol USM: 202023501-5} --- IPD434 Seminario de Soft Computing\\
+\textit{Departamento de Electrónica, Universidad Técnica Federico Santa María}, Valparaíso, Chile\\
+Repositorio: \url{https://github.com/YizzHub/proyecto-ipd434-fgamr}}}
+
+\maketitle
+
+\begin{abstract}
+GAMR (Tran \textit{et al.}, 2025) enruta simultáneamente múltiples solicitudes en redes definidas por software (SDN) con un NSGA-II dinámico que usa memoria de soluciones previas y parada temprana por hipervolumen. Sin embargo, sus operadores eligen vecinos al azar, sin mirar la calidad de servicio (QoS), y la ruta que instala se escoge por menor solapamiento de enlaces, sin considerar el retardo ni la pérdida. Como contribución propia proponemos F-GAMR, que agrega dos sistemas difusos Mamdani interpretables y sin entrenamiento: FIS-1 puntúa la deseabilidad QoS de cada salto y guía la inicialización aleatoria y la mutación, y FIS-2 elige del frente de Pareto la solución de mejor compromiso retardo--pérdida. En simulación sobre las topologías reales Oxford y Chinanet, con 30 semillas y prueba de Wilcoxon, F-GAMR reduce frente a GAMR la pérdida de paquetes realizada entre 2.8\% y 6.1\% y el tiempo de cómputo entre 7\% y 18\% ($p<0.03$). En Chinanet además mejora el hipervolumen en 6.8--8.2\% y el IGD en 20--25\%. Frente a NSGA-II mejora el hipervolumen en 7--12\% y el tiempo en 25--29\%. El estudio de ablación separa el aporte de cada sistema difuso.
+\end{abstract}
+
+\begin{IEEEkeywords}
+SDN, enrutamiento multi-objetivo, NSGA-II, lógica difusa, Mamdani, calidad de servicio, hipervolumen.
+\end{IEEEkeywords}
+
+\section{Introducción}
+En una red tradicional cada router decide localmente por dónde reenviar los paquetes, normalmente por el camino más corto (Dijkstra o \emph{Min-Hop}). Las redes definidas por software (SDN) centralizan esa decisión: un controlador conoce toda la topología y el estado de los enlaces, y programa los switches~\cite{kreutz2015sdn}. Esto permite enrutar según calidad de servicio (QoS) —retardo, pérdida y carga—, pero encontrar rutas que cumplan varias métricas a la vez es NP-completo~\cite{wang1996qos}. El problema se agrava cuando muchas solicitudes simultáneas compiten por los mismos enlaces.
+
+GAMR~\cite{tran2025gamr} lo aborda con un algoritmo genético multi-objetivo dinámico que codifica todas las solicitudes de un intervalo en un cromosoma, reutiliza rutas previas mediante una memoria y se detiene cuando el hipervolumen se estanca. En una réplica previa (seminario del curso) observamos dos debilidades: una \textbf{exploración ciega a la QoS} (la caminata de inicialización y la mutación eligen vecinos al azar) y una \textbf{elección final ingenua} (instala la solución de Pareto con menor solapamiento de enlaces, criterio topológico que ignora el retardo y la pérdida del usuario).
+
+Este trabajo responde dos preguntas. (P1) \qq{}Puede una guía difusa interpretable de la exploración mejorar la calidad del frente de Pareto y el tiempo de convergencia de GAMR? (P2) \qq{}Puede un selector difuso mejorar la QoS realizada de la ruta instalada? Las \textbf{contribuciones propias} son:
+\begin{enumerate}
+\item \textbf{FIS-1}: un sistema Mamdani de 10 reglas que puntúa la deseabilidad QoS de cada salto y sesga con una ruleta la inicialización aleatoria y la mutación.
+\item \textbf{FIS-2}: un selector Mamdani de 6 reglas del mejor compromiso retardo--pérdida en el frente de Pareto.
+\item Una evaluación reproducible: tres líneas base, ablación, 30 semillas, Wilcoxon y calibración en semillas disjuntas (incluye un resultado negativo).
+\end{enumerate}
+
+\section{Marco teórico y trabajos relacionados}
+\subsection{Redes definidas por software}
+Una SDN tiene tres planos~\cite{kreutz2015sdn}. El \emph{plano de datos} está formado por los switches, que reenvían paquetes según tablas de flujo. El \emph{plano de control} es un controlador (p.\,ej., Ryu) que mide la red y programa los switches mediante OpenFlow~\cite{mckeown2008openflow}. El \emph{plano de aplicación} ejecuta la lógica de enrutamiento (aquí, GAMR o F-GAMR). Gracias al monitoreo periódico (LLDP y estadísticas de puertos), el controlador conoce el retardo, la pérdida y la carga de cada enlace; con esa información calcula rutas y las instala como reglas \emph{Flow-Mod}. Como el estado cambia en cada intervalo $\Delta^t$, el algoritmo debe responder en fracciones de segundo.
+
+\subsection{Métricas de calidad de servicio}
+Cada métrica se agrega distinto a lo largo de una ruta $p_k$~\cite{tran2025gamr,wang1996qos}: el \emph{retardo} es aditivo, $\Dc_k=\sum_{e\in p_k} delay_e$ [ms]; la \emph{pérdida} es multiplicativa, $\Lc_k=1-\prod_{e\in p_k}(1-loss_e)$ [\%]; y el \emph{ancho de banda} lo fija el enlace más angosto, $\Bc_k=\min_{e\in p_k} bw_e$ [Mbps]. La \emph{utilización} de un enlace es $\rho_e=\text{carga}_e/bw_e$. Cuando $\rho_e\to1$ crece la cola y con ella el retardo; si $\rho_e>1$ se descartan paquetes.
+
+\subsection{Optimización multi-objetivo y NSGA-II}
+Con $m$ objetivos a minimizar, una solución $x$ \emph{domina} a $y$ si no es peor en ningún objetivo y es estrictamente mejor en al menos uno. Las soluciones no dominadas forman el \emph{frente de Pareto}. NSGA-II~\cite{deb2002nsga2} ordena en cada generación la unión de padres e hijos en frentes no dominados $F^1,F^2,\dots$, conserva los mejores (elitismo) y desempata con la \emph{distancia de aglomeración}, que preserva la diversidad. La calidad de un frente $A$ se mide con el \textbf{hipervolumen} (HV)~\cite{zitzler1999hv}, el volumen del espacio de objetivos dominado por $A$ y acotado por un punto de referencia $r$ (mayor es mejor: premia convergencia y diversidad), y con el \textbf{IGD}~\cite{coello2004igd}, $\frac{1}{|F^*|}\sum_{z\in F^*}\min_{a\in A}\lVert z-a\rVert_2$, la distancia media desde cada punto de un frente de referencia $F^*$ al punto más cercano de $A$ (menor es mejor).
+
+\subsection{Lógica difusa}
+Un conjunto difuso asigna a cada elemento un grado de pertenencia $\mu\in[0,1]$~\cite{zadeh1965fuzzy}. En un sistema Mamdani~\cite{mamdani1975}, cada regla \emph{SI--ENTONCES} se dispara con grado $\tau_r=\min_i \mu_{A_{r,i}}(x_i)$. Su consecuente se recorta a $\tau_r$, las reglas se agregan por máximo y la salida nítida se obtiene por centroide:
+\begin{equation}
+y^*=\frac{\int y\,\mu_{\mathrm{agr}}(y)\,dy}{\int \mu_{\mathrm{agr}}(y)\,dy},\quad \mu_{\mathrm{agr}}(y)=\max_r\min\!\big(\tau_r,\mu_{B_r}(y)\big).\label{eq:mamdani}
+\end{equation}
+
+\subsection{Trabajos relacionados}
+GAMR~\cite{tran2025gamr} supera a NSGA-II, NSGA-III, MOEA/D y otros evolutivos, a Min-Hop y al enrutador predictivo LCP-WAC (basado en una LSTM). La hibridación genético-difusa es clásica en Soft Computing~\cite{herrera2003fuzzyga}, pero suele adaptar parámetros como $p_c$ o $p_m$. Sesgar una construcción estocástica con una heurística local $\eta^{\kappa}$ proviene de las colonias de hormigas~\cite{dorigo2004aco}, y la memoria es estándar en optimización evolutiva dinámica~\cite{nguyen2012dynamic}. F-GAMR combina estas ideas: usa un FIS como heurística QoS interpretable \emph{dentro} de la construcción de rutas, no como sintonizador de parámetros.
+
+\section{Problema y algoritmo base GAMR}
+La red es un grafo $G=(\mathcal{V},\mathcal{E})$ de hosts $H$, servidores $S$ y switches $M$. En cada intervalo $t$ llegan $N_r$ solicitudes $R_k=(H_i,S_j,B_k)$: el host $H_i$ quiere conectarse al servidor $S_j$ con un ancho de banda $B_k$. Hay que encontrar un conjunto de rutas sin ciclos $\Phi^t=\{p_k\}$, una por solicitud, que minimice~\cite{tran2025gamr}:
+\begin{equation}
+f(\Phi^t)=\Big\{\tfrac{1}{N_r}\textstyle\sum_k \Dc_k,\ \tfrac{1}{N_r}\sum_k \Lc_k,\ f_3\Big\},\quad \text{s.a. } \Bc_k\ge B_k .\label{eq:obj}
+\end{equation}
+El paper define $f_3=1-\min_{e\in\mathcal{E}}\rho_e$, pero en nuestra réplica ese mínimo global resultó casi constante: solo 3 valores distintos en toda una población. Por eso usamos la versión del código oficial, que mide la utilización del cuello de botella de cada ruta: $f_3=\frac{1}{N_r}\sum_k\max_{e\in p_k}\rho_e$. La restricción de ancho de banda se maneja con dominancia con restricciones~\cite{deb2000constraint}: una solución factible siempre domina a una infactible.
+
+Cada individuo contiene $N_r$ rutas y GAMR procede así: (1) \emph{Inicialización híbrida}: para cada solicitud, con probabilidad $\alpha=0.5$ aplica PSBI, que reutiliza la ruta memorizada hacia $S_j$ y conecta el nuevo host a ella por BFS; si no, aplica RSBI, una caminata aleatoria sin revisitas que retrocede en los callejones sin salida. (2) \emph{Operadores}: un cruce que intercambia colas de ruta en un nodo común a ambos padres ($p_c=0.8$), una mutación que inserta un vecino común entre dos nodos consecutivos ($p_m=0.1$) y la eliminación de ciclos. (3) \emph{Selección} NSGA-II con $N=100$. (4) \emph{Parada} cuando el HV no mejora en $G^{pre}=10$ generaciones, o al llegar a $G^{\max}=500$. (5) \emph{Instalación} de la solución del frente con menor solapamiento de enlaces. (6) \emph{Memoria PRSM}, que guarda una ruta por servidor para el siguiente intervalo.
+
+\section{Método propuesto: F-GAMR}
+F-GAMR conserva intactos la memoria, $\alpha$, el cruce, la selección y la parada de GAMR. Solo reemplaza dos elementos: la elección uniforme de vecinos (por FIS-1) y el criterio de instalación (por FIS-2).
+
+\subsection{FIS-1: deseabilidad QoS de un salto}
+Considere un salto $u\to v$ dentro de una ruta hacia el servidor $S$. FIS-1 recibe cuatro entradas en $[0,1]$, calculadas con el estado \emph{medido} del intervalo:
+\begin{equation}
+\begin{aligned}
+\pi_{uv}&=\tfrac12\big(h_S(u)-h_S(v)+1\big), & c_e&=bg_e^t/bw_e^t,\\
+d_e&=delay_e/(100\ \mathrm{ms}), & l_e&=loss_e/(10\ \%).
+\end{aligned}
+\end{equation}
+El \emph{progreso} $\pi_{uv}$ usa $h_S(\cdot)$, los saltos hasta $S$, y vale 1 si el salto acerca al servidor, 1/2 si mantiene la distancia y 0 si aleja. $d_e$ y $l_e$ son el retardo y la pérdida del enlace, normalizados por sus máximos de la Tabla~II de~\cite{tran2025gamr}, y $c_e$ es la utilización por la carga de fondo $bg_e^t$ medida en el intervalo. Con tres términos lingüísticos por entrada, diez reglas producen con~\eqref{eq:mamdani} la deseabilidad $w_{uv}\in[0,1]$; por ejemplo, ``SI acerca Y retardo bajo Y pérdida baja ENTONCES muy alta'', ``SI aleja ENTONCES muy baja'' y ``SI carga alta ENTONCES baja'' (Fig.~\ref{fig:fis}a). La caminata RSBI elige el siguiente nodo con una ruleta difusa, en lugar de hacerlo de forma uniforme:
+\begin{equation}
+P(v\mid u)=\frac{w_{uv}^{\kappa}+\varepsilon}{\sum_{v'\in\mathcal{N}(u)\setminus\mathrm{vis}}\big(w_{uv'}^{\kappa}+\varepsilon\big)},\qquad \kappa=2,\ \varepsilon=0.01 .\label{eq:ruleta}
+\end{equation}
+Se mantiene el retroceso de RSBI y, como $\varepsilon>0$, ningún salto válido queda prohibido: la exploración se sesga hacia rutas prometedoras sin convertirse en un Dijkstra determinista. En la mutación, el nodo a insertar $\tilde\lambda$ entre $\lambda_1$ y $\lambda_2$ se elige con probabilidad $\propto q(\lambda_1,\tilde\lambda)\,q(\tilde\lambda,\lambda_2)$, donde $q$ es la deseabilidad con progreso neutro ($\pi=\tfrac12$).
+
+\subsection{FIS-2: selector de compromiso}
+Para cada solución $\Phi$ del frente final $F^1$, FIS-2 recibe su retardo medio $\hat{\Dc}$ y su pérdida media $\hat{\Lc}$, ambos normalizados min--max \emph{dentro del frente}, de modo que el selector no depende de la escala de la instancia. Seis reglas expresan el compromiso: ambos bajos $\to$ aptitud muy alta; uno bajo y el otro medio $\to$ alta; ambos medios $\to$ media; cualquiera alto $\to$ baja (Fig.~\ref{fig:fis}b). Se instala $\Phi^\star=\arg\max_{\Phi\in F^1}\text{FIS-2}(\hat{\Dc},\hat{\Lc})$, con empates resueltos por menor retardo. El Algoritmo~\ref{alg:fgamr} resume el método.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fis.pdf}
+\caption{Superficies de decisión. (a) FIS-1: deseabilidad de un salto que acerca al servidor (pérdida 2\%), según el retardo y la carga. (b) FIS-2: aptitud según el retardo y la pérdida normalizados dentro del frente.}
+\label{fig:fis}
+\end{figure}
+
+\begin{algorithm}[t]
+\caption{F-GAMR en el intervalo $t$ (en \textbf{negrita}, lo nuevo respecto de GAMR)}\label{alg:fgamr}
+\begin{algorithmic}[1]
+\REQUIRE estado medido $\Delta^t$, solicitudes $R^t$, memoria $\mathcal{M}$
+\STATE \textbf{FIS-1: calcular $w_{uv}$ para todo salto $(u,v,S)$ y $q_e$}
+\STATE $P\leftarrow$ por solicitud: PSBI($\mathcal{M}$) si $U[0,1]\le\alpha$; si no, \textbf{RSBI guiada}~\eqref{eq:ruleta}
+\REPEAT
+\STATE $O\leftarrow$ cruce + \textbf{mutación guiada} + eliminación de ciclos
+\STATE $P\leftarrow$ selección NSGA-II$(P\cup O)$; registrar $HV_G$
+\UNTIL{$HV_G=HV_{G-10}$ \OR $G=G^{\max}$}
+\STATE $\Phi^\star\leftarrow$ \textbf{$\arg\max$ FIS-2 sobre $F^1$}; instalar; actualizar $\mathcal{M}$
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Costo.} FIS-1 se evalúa una vez por intervalo ($\mathcal{O}(N_s|\mathcal{E}|)$, vectorizado); la ruleta cuesta $\mathcal{O}(\deg u)$ por paso, igual que la elección uniforme, y FIS-2 se evalúa una vez. La complejidad de GAMR, $\mathcal{O}(G^{\max}(NN_r|\mathcal{V}|^2+4mN^2))$, no cambia.
+
+\textbf{Calibración.} Los parámetros se fijaron con semillas de \emph{validación} (500--503), disjuntas de las de evaluación (0--29). La propuesta original —adaptar $\alpha$ e inyectar individuos aleatorios según la volatilidad de la red— dio resultados inconsistentes (HV entre $-6$\% y $+8$\% según el escenario, tiempo hasta $+72$\%; con $\alpha\to0.8$, HV $-19$\%) y se descartó. En cambio, FIS-1 con $\kappa=2$ mejoró el HV entre 3.7\% y 14.3\% en los cuatro escenarios; con $\kappa=4$ la búsqueda perdió diversidad. En FIS-2, añadir solapamiento, holgura o volatilidad como entradas no mejoró la QoS realizada.
+
+\section{Diseño experimental}
+\textbf{Simulador.} El plano de datos (Mininet + Ryu en~\cite{tran2025gamr}) se reemplaza por un modelo fluido en Python. Los enlaces siguen la Tabla~II de~\cite{tran2025gamr}: retardo $U[5,100]$\,ms, pérdida en $\{0.1,\dots,10\}\%$ y ancho de banda $U[30,200]$\,Mbps. En cada intervalo el ancho de banda varía con un nivel de desorden $\beta$ (Ec.~14 del paper): cada enlace se perturba al azar hasta $\pm\beta$ de su valor base. Se agregan una carga de fondo $bg_e\sim U[0,0.3]\,bw_e$ y una demanda por solicitud $B_k\sim U[0.5,3]$\,Mbps. Así, $\rho_e=(bg_e+\sum_{k:e\in p_k}B_k)/bw_e$, y la congestión añade un retardo de cola de tipo M/M/1 acotado, $10\min(\rho_e/(1-\rho_e),20)$\,ms, más una pérdida por desborde $\max(0,1-1/\rho_e)$. Se usan las topologías reales Oxford (20 switches, 26 enlaces) y Chinanet (42 switches, 66 enlaces) del Internet Topology Zoo~\cite{knight2011zoo}.
+
+\textbf{Experimentos} ($N_s=2$ servidores, para que haya congestión). \textbf{E1} (comparación principal y ablación): Oxford y Chinanet, $N_r=50$, $\beta\in\{5,55\}\%$, 30 semillas. \textbf{E2} (escalabilidad): Oxford, $N_r\in\{10,20,50,100\}$, $\beta=20\%$, 10 semillas. \textbf{E3} (robustez al desorden): Chinanet, $N_r=100$, $\beta\in\{0,5,20,55\}\%$, 10 semillas.
+
+\textbf{Líneas base.} \emph{Min-Hop} (MH): camino más corto en saltos. \emph{QoS-Dijkstra}: ruta de mínimo retardo entre los enlaces con capacidad residual $\ge B_k$, calculada para cada solicitud por separado. \emph{NSGA-II} estándar: los operadores de GAMR con $\alpha=0$ y sin memoria. \emph{GAMR} original, implementado fielmente según el paper. En E3, además, \emph{LCP-WAC*}: un proxy sin LSTM de~\cite{tran2025gamr} que usa un costo ponderado con una predicción histórica del estado. La ablación compara \emph{solo FIS-1} y \emph{solo FIS-2} con F-GAMR. Todos los evolutivos usan la Tabla~III de~\cite{tran2025gamr}: $N=100$, $G^{\max}=500$, $p_c=0.8$, $p_m=0.1$ y torneo binario.
+
+\textbf{Protocolo.} Cada semilla es una secuencia de 4 intervalos. En cada uno llegan solicitudes nuevas y \emph{todos} los algoritmos resuelven la misma instancia. Después, las rutas se instalan, la red evoluciona a $\Delta^{t+1}$ y la QoS se mide en ese estado \emph{realizado}, no en el que se optimizó. El intervalo 1 (memoria vacía) se descarta y se promedian los intervalos 2--4: una observación por semilla.
+
+\textbf{Métricas.} \emph{Calidad del frente}: HV con $r=(1,1,1)$ e IGD respecto de $F^*$ (no dominados de la unión de los frentes), con objetivos normalizados por el ideal y el nadir de la instancia. \emph{Costo}: tiempo de cómputo por instancia [s]. \emph{QoS realizada}: retardo medio [ms], pérdida media [\%] y utilización máxima de enlace $\rho_{\max}$ [\%]. Se reporta media $\pm$ desviación estándar sobre las semillas y la prueba de Wilcoxon pareada por semilla~\cite{wilcoxon1945}, con significancia $p<0.05$.
+
+\input{tablas/e1_moo.tex}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{e1_moo.pdf}
+\caption{E1: distribución sobre 30 semillas de HV, IGD y tiempo (Ox/Ch = Oxford/Chinanet; \% = desorden $\beta$). Cajas: rango intercuartílico; línea roja: mediana.}
+\label{fig:e1}
+\end{figure*}
+
+\input{tablas/e1_qos.tex}
+
+\section{Resultados}
+\subsection{E1: calidad del frente y tiempo (P1)}
+La Tabla~\ref{tab:e1moo} y la Fig.~\ref{fig:e1} resumen estos resultados. En \textbf{Chinanet}, F-GAMR eleva el HV de GAMR de 0.679 a 0.734 con $\beta=5\%$ ($+8.2\%$, $p=2\times10^{-8}$) y de 0.678 a 0.724 con $\beta=55\%$ ($+6.8\%$), y reduce el IGD entre 20\% y 25\% ($p<10^{-3}$). En \textbf{Oxford}, las diferencias de HV e IGD no son significativas ($p>0.2$). En ambas topologías F-GAMR \textbf{converge antes}: en Oxford necesita unas 50 generaciones frente a 62 de GAMR y su tiempo baja entre 16.7\% y 18.3\% ($p<10^{-4}$); en Chinanet baja entre 7.3\% y 7.7\% ($p<0.03$). \textbf{Frente a NSGA-II}, F-GAMR mejora el HV entre 7\% y 12\%, el IGD entre 22\% y 30\% y el tiempo entre 25\% y 29\% ($p<0.005$).
+
+\textbf{Ablación.} La mejora de HV, IGD y tiempo proviene de FIS-1: por sí solo sube el HV de Chinanet entre 6\% y 7\% y recorta el tiempo entre 11\% y 19\% ($p<0.002$). FIS-2 solo no altera el frente (todas sus diferencias tienen $p>0.07$), lo esperado porque actúa después de la evolución.
+
+\subsection{E1: QoS realizada y selección final (P2)}
+La Tabla~\ref{tab:e1qos} muestra la QoS medida. F-GAMR obtiene la \textbf{menor pérdida} en los cuatro escenarios: entre 2.8\% y 6.1\% menos que GAMR (p.\,ej., 10.11\% frente a 10.77\% en Chinanet con $\beta=5\%$; $p\le10^{-4}$). El costo en \textbf{retardo} es pequeño, entre $+0.3$\% y $+1.6$\%, y solo es significativo en Oxford con $\beta=5\%$ ($p=0.025$). Frente a \textbf{Min-Hop}, F-GAMR reduce la pérdida entre 10\% y 20\% y el retardo hasta 11.5\%. \textbf{QoS-Dijkstra}, al optimizar cada solicitud de forma egoísta, satura los mismos enlaces y obtiene la peor pérdida (16--18.5\%) y la mayor $\rho_{\max}$. La ablación atribuye la reducción de pérdida a FIS-2: solo FIS-1 no cambia la pérdida.
+
+\textbf{Criterios de selección.} Para aislar FIS-2 aplicamos cuatro criterios sobre \emph{los mismos} frentes de GAMR (Fig.~\ref{fig:res}d). \emph{Mínimo retardo} gana 1.3--2.3\% de retardo, pero pierde 2.1--3.3\% de pérdida. \emph{FIS-2} reduce la pérdida entre 1.4\% y 6.1\% ($p<0.03$) a cambio de 0.9--2.5\% más de retardo. Además, domina de Pareto al \emph{punto rodilla} (la solución más cercana al ideal normalizado) en tres de los cuatro escenarios: logra a la vez menos pérdida y menos retardo.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{resultados.pdf}
+\caption{(a,b) E2: retardo y pérdida en Oxford según el número de solicitudes simultáneas $N_r$ (media$\pm$desv.\ est., 10 semillas). (c) E3: pérdida en Chinanet según el desorden $\beta$. (d) QoS realizada de cada criterio aplicado a los mismos frentes de GAMR, en $\Delta$\% frente a ``menor solapamiento'' (un punto por escenario de E1; el cuadrante inferior izquierdo es mejor en ambas métricas).}
+\label{fig:res}
+\end{figure*}
+
+\subsection{E2 y E3: escalabilidad y desorden de la red}
+\textbf{Escalabilidad (Fig.~\ref{fig:res}a,b).} Con $N_r=100$ las heurísticas colapsan: Min-Hop llega a 316.7\,ms y 24.5\% de pérdida, y QoS-Dijkstra a 368.8\,ms y 29.7\%, mientras los evolutivos se mantienen en unos 264\,ms y 14.5\%. Frente a GAMR, F-GAMR reduce la pérdida en 8.9\%, 5.1\% y 3.0\% para $N_r=10$, 20 y 50 ($p<0.01$); con $N_r=100$ la ventaja ($-1.0\%$) no es significativa. El tiempo baja entre 12\% y 19\% en todas las cargas ($p<0.05$): unos 107\,ms por solicitud frente a 128\,ms de GAMR.
+
+\textbf{Desorden (Fig.~\ref{fig:res}c).} Con $\beta=0$ la red no cambia, la predicción histórica de LCP-WAC* es exacta y este obtiene el mejor retardo y la menor pérdida (189.7\,ms; 10.12\%), igual que en~\cite{tran2025gamr}. Con $\beta\ge5\%$ la predicción queda obsoleta y los evolutivos lo superan: F-GAMR obtiene 14.95--18.99\% de pérdida, frente a 16.26--20.21\% de LCP-WAC*. F-GAMR reduce la pérdida de GAMR en 3.2--4.4\% para $\beta\le20\%$ ($p=0.002$); con $\beta=55\%$ la mejora ($-1.4\%$) no es significativa.
+
+\section{Discusión crítica}
+\textbf{Por qué funciona.} FIS-1 concentra la población inicial en rutas QoS-prometedoras sin anular el azar: en 2000 caminatas de una instancia de Oxford, la ruta inicial media pasó de 541 a 485\,ms y su pérdida de 45\% a 36\%. El HV arranca más alto y la parada por estancamiento se activa antes, lo que explica el ahorro de tiempo. FIS-2 sustituye un criterio topológico por uno de QoS. Ambos son complementarios: FIS-1 mejora el frente y el tiempo; FIS-2, la ruta instalada.
+
+\textbf{Casos de fallo.} (i) \emph{Oxford no mejora en HV ni IGD.} Es una topología poco mallada (diámetro 7, grado medio 2.6, solo 3 triángulos). Con tan pocas alternativas, el sesgo de FIS-1 reduce la diversidad (22 rutas iniciales distintas frente a 36 con la caminata uniforme) y el IGD empeora un 8--12\%, aunque sin significancia. (ii) \emph{El beneficio de FIS-2 se desvanece con $\beta=55\%$}: la ruta se elige con el estado de $\Delta^t$ pero se evalúa en $\Delta^{t+1}$, y cuando la red cambia mucho esa diferencia anula la ventaja. (iii) \emph{FIS-2 sube $\rho_{\max}$ entre 1 y 3 puntos}, porque prioriza rutas de baja pérdida aunque compartan enlaces. (iv) \emph{El control adaptativo de $\alpha$ fracasó}: subir $\alpha$ concentra la población en el tramo memorizado y colapsa la diversidad; y como la mutación por inserción siempre alarga la ruta, aumentar $p_m$ solo agrega desvíos.
+
+\textbf{Limitaciones.} El plano de datos es un modelo fluido, no Mininet/TCP: las magnitudes absolutas no son comparables con~\cite{tran2025gamr}, sí las tendencias. LCP-WAC* es un proxy sin LSTM; las reglas se diseñaron por conocimiento experto y se validaron con 4 semillas; solo hay dos topologías medianas; los tiempos son de Python puro.
+
+\section{Conclusiones y trabajo futuro}
+F-GAMR muestra que la lógica difusa aporta a GAMR algo que un parámetro fijo no da: conocimiento interpretable sobre la QoS, sin entrenamiento. \textbf{Respuesta a P1}: guiar la exploración con FIS-1 mejora significativamente el frente en la topología más mallada (Chinanet: HV $+7$--$8\%$, IGD $-20$--$25\%$) y reduce el tiempo en todos los escenarios ($-7$ a $-19\%$). \textbf{Respuesta a P2}: el selector FIS-2 reduce la pérdida realizada en 2.8--6.1\%, con un costo de retardo menor al 2\%. Como trabajo futuro proponemos ajustar las funciones de pertenencia con un algoritmo genético (sistemas genético-difusos), hacer $\kappa$ adaptativo según la conectividad de la topología para no perder diversidad en redes poco malladas, incorporar una memoria PRSM indexada por región del host y validar el método en Mininet con tráfico TCP real.
+
+\textbf{Reproducibilidad.} El repositorio público (primera página) contiene el código, las topologías, los resultados crudos de las 30 semillas y el notebook; las tablas y figuras de este informe se regeneran con los scripts \path{run_reproduction.py} y \path{scripts/informe_assets.py}.
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

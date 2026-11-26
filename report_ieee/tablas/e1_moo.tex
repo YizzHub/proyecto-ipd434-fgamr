@@ -1,0 +1,20 @@
+\begin{table*}[!t]
+\centering
+\caption{E1 --- Calidad del frente de Pareto y tiempo de c\'omputo por instancia ($N_s{=}2$, $N_r{=}50$; media$\pm$desv.\ est.\ sobre 30 semillas). HV$\uparrow$, IGD$\downarrow$, t$\downarrow$. \textbf{Negrita}: mejor; $^\dagger$: diferencia con GAMR significativa (Wilcoxon pareado, $p<0.05$).}
+\label{tab:e1moo}
+\scriptsize
+\setlength{\tabcolsep}{2.2pt}
+\begin{tabular}{l|ccc|ccc|ccc|ccc}
+\toprule
+ & \multicolumn{3}{c|}{Oxford, $\beta{=}5\%$} & \multicolumn{3}{c|}{Oxford, $\beta{=}55\%$} & \multicolumn{3}{c|}{Chinanet, $\beta{=}5\%$} & \multicolumn{3}{c}{Chinanet, $\beta{=}55\%$} \\
+Algoritmo & HV & IGD & t [s] & HV & IGD & t [s] & HV & IGD & t [s] & HV & IGD & t [s] \\
+\midrule
+NSGA-II & 0.622{\tiny$\pm$0.072}$^\dagger$ & 0.094{\tiny$\pm$0.037}$^\dagger$ & 6.98{\tiny$\pm$1.21}$^\dagger$ & 0.635{\tiny$\pm$0.060}$^\dagger$ & 0.090{\tiny$\pm$0.032}$^\dagger$ & 6.93{\tiny$\pm$1.10}$^\dagger$ & 0.669{\tiny$\pm$0.069} & 0.087{\tiny$\pm$0.035} & 9.11{\tiny$\pm$1.84}$^\dagger$ & 0.675{\tiny$\pm$0.054} & 0.080{\tiny$\pm$0.028} & 9.50{\tiny$\pm$1.75}$^\dagger$ \\
+GAMR & 0.687{\tiny$\pm$0.061} & 0.060{\tiny$\pm$0.023} & 6.14{\tiny$\pm$1.58} & 0.694{\tiny$\pm$0.066} & 0.059{\tiny$\pm$0.017} & 6.05{\tiny$\pm$1.40} & 0.679{\tiny$\pm$0.060} & 0.081{\tiny$\pm$0.026} & 7.44{\tiny$\pm$1.69} & 0.678{\tiny$\pm$0.048} & 0.077{\tiny$\pm$0.016} & 7.68{\tiny$\pm$1.70} \\
+\midrule
+solo FIS-1 & 0.695{\tiny$\pm$0.070} & 0.066{\tiny$\pm$0.026} & \textbf{5.01}{\tiny$\pm$1.43}$^\dagger$ & 0.688{\tiny$\pm$0.062} & 0.066{\tiny$\pm$0.021} & \textbf{4.88}{\tiny$\pm$1.12}$^\dagger$ & 0.729{\tiny$\pm$0.049}$^\dagger$ & \textbf{0.057}{\tiny$\pm$0.015}$^\dagger$ & \textbf{6.56}{\tiny$\pm$1.78}$^\dagger$ & 0.720{\tiny$\pm$0.035}$^\dagger$ & 0.064{\tiny$\pm$0.023}$^\dagger$ & \textbf{6.83}{\tiny$\pm$1.56}$^\dagger$ \\
+solo FIS-2 & 0.690{\tiny$\pm$0.065} & \textbf{0.054}{\tiny$\pm$0.015} & 6.23{\tiny$\pm$1.43} & 0.693{\tiny$\pm$0.059} & \textbf{0.057}{\tiny$\pm$0.018} & 6.11{\tiny$\pm$1.20} & 0.691{\tiny$\pm$0.046} & 0.074{\tiny$\pm$0.026} & 7.83{\tiny$\pm$1.74} & 0.672{\tiny$\pm$0.049} & 0.081{\tiny$\pm$0.031} & 7.82{\tiny$\pm$1.54} \\
+\textbf{F-GAMR} & \textbf{0.697}{\tiny$\pm$0.073} & 0.067{\tiny$\pm$0.026} & 5.12{\tiny$\pm$1.31}$^\dagger$ & \textbf{0.698}{\tiny$\pm$0.065} & 0.063{\tiny$\pm$0.028} & 4.94{\tiny$\pm$1.26}$^\dagger$ & \textbf{0.734}{\tiny$\pm$0.055}$^\dagger$ & 0.061{\tiny$\pm$0.021}$^\dagger$ & 6.87{\tiny$\pm$1.67}$^\dagger$ & \textbf{0.724}{\tiny$\pm$0.046}$^\dagger$ & \textbf{0.062}{\tiny$\pm$0.024}$^\dagger$ & 7.13{\tiny$\pm$1.83}$^\dagger$ \\
+\bottomrule
+\end{tabular}
+\end{table*}

@@ -25,3 +25,4 @@ presentation/*.toc
 Thumbs.db
 # validaciones temporales del notebook
 _nb_rapido*.ipynb
+report_ieee/*.xdv

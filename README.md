@@ -1,7 +1,7 @@
 # F-GAMR: exploración guiada por lógica difusa y selección difusa del frente de Pareto para el enrutamiento multi-objetivo dinámico en SDN
 
 Proyecto aplicado final — **IPD434 Seminario de Soft Computing**, Universidad Técnica Federico Santa María, 2026-2.
-Autor: **[NOMBRE COMPLETO]** · Rol USM: **[ROL USM]**
+Autor: **Jesus Alonso Chaffe Gonzalez** · Rol USM: **202023501-5** · Repositorio: <https://github.com/YizzHub/proyecto-ipd434-fgamr>
 
 Extensión del artículo:
 
@@ -42,10 +42,11 @@ src/metrics_stats.py       Hipervolumen exacto 3D, IGD, Wilcoxon pareado y tabla
 src/experiments.py         Protocolo experimental paralelo (E1–E3)
 src/reporting.py, plots.py Tablas y figuras del informe
 scripts/calibracion.py     Calibración en semillas de validación
+scripts/informe_assets.py  Figuras y tablas compactas del informe
 tests/test_core.py         Pruebas unitarias (pytest)
 notebooks/                 Anexo: réplica de GAMR del seminario (con salidas)
 results/                   raw_logs/, tables/, figures/, calibracion/, replicacion_seminario/
-report_ieee/               Informe IEEEtran (≤ 5 páginas)
+report_ieee/               Informe IEEEtran de 5 páginas (main.tex, references.bib, figs/, tablas/, main.pdf)
 presentation/              Diapositivas de la presentación final
 ```
 
@@ -73,6 +74,11 @@ python run_reproduction.py --solo-reporte
 
 # 6. (Opcional) calibración en semillas de validación (≈ 15 min)
 python scripts/calibracion.py
+
+# 7. Figuras y tablas del informe (< 1 min) y compilación del PDF
+python scripts/informe_assets.py
+cd report_ieee
+pdflatex main && bibtex main && pdflatex main && pdflatex main
 ```
 
 El notebook `F-GAMR.ipynb` (con `MODO = 'completo'`) **carga** los resultados de `results/raw_logs/` si existen; si
